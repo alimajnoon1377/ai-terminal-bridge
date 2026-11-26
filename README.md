@@ -1,155 +1,152 @@
 # AI Terminal Bridge
 
-**English:** a self-hosted, open-source bridge that connects AI assistants to Linux servers over SSH through MCP, REST, WebSocket, OpenAI-compatible tool calling and a CLI, with per-server permission levels, human approval, an audit log and a web dashboard (Persian UI). Version 0.1.0: **not independently audited**; read the [security notes](docs/SECURITY.md) before pointing it at a server you care about. Quick start: copy `.env.example` to `.env`, set `ATB_ADMIN_PASSWORD`, run `docker compose up -d --build`, open <http://127.0.0.1:8750>. The detailed documentation is in Persian; the [API reference](docs/API.md) and [tool reference](docs/TOOLS.md) include the English names and schemas. [MIT license](LICENSE).
+A self-hosted, open-source bridge that connects AI assistants to the terminal and files of Linux servers (over SSH) through **MCP, REST, WebSocket, OpenAI-compatible tool calling and a CLI**, with permission levels, human approval, an activity log and a web dashboard. The dashboard UI is currently in **Persian**.
 
----
+Status: version `0.1.0`. The core is covered by automated tests over real SSH, but it has not been used in production and has **not been independently security audited**. Read [what has and has not been tested](#testing-status) and the [security limitations](docs/SECURITY.md) before using it on a server you care about.
 
-پلی متن‌باز و خودمیزبان که دستیارهای هوش مصنوعی را از راه **MCP، REST، WebSocket، قالب tool calling سازگار با OpenAI و CLI** به ترمینال و فایل‌های سرورهای لینوکسی (از راه SSH) وصل می‌کند؛ با سطح دسترسی، تأیید انسانی، گزارش فعالیت و داشبورد وب فارسی.
-
-وضعیت: نسخه‌ی `0.1.0`. هسته با SSH واقعی تست خودکار شده است، ولی هنوز در محیط عملیاتی استفاده و ممیزی امنیتی مستقل نشده. [آنچه آزمایش شده و نشده](#وضعیت-آزمایش) و [محدودیت‌های امنیتی](docs/SECURITY.md) را پیش از استفاده روی سرور مهم بخوانید.
-
-## شروع سریع
+## Quick start
 
 ```bash
 cp .env.example .env          # Windows: Copy-Item .env.example .env
-# ATB_ADMIN_PASSWORD را در .env تنظیم کنید (حداقل ۱۰ نویسه)
+# set ATB_ADMIN_PASSWORD in .env (at least 10 characters)
 docker compose up -d --build
 ```
 
-> روی Windows با Docker Desktop و تصاویر رسمی Docker Hub ساخته و اجرا شده است (یک ماشین).
+> It has been built and run on Windows with Docker Desktop and the official Docker Hub images (one machine).
 
-1. <http://127.0.0.1:8750> ← ورود با `admin`.
-2. «سرورها»: افزودن سرور، گذاشتن کلید عمومی روی آن، تأیید اثر انگشت ([آماده کردن سرور](docs/USAGE.md#آماده-کردن-سرور-مقصد)).
-3. «دستیارها»: ساخت توکن و دادن دسترسی.
-4. اتصال دستیار، مثلاً Claude Code:
+1. Open <http://127.0.0.1:8750> and sign in as `admin`.
+2. **Servers** («سرورها»): add a server, put the public key on it and confirm the fingerprint ([preparing the server](docs/USAGE.md#preparing-the-target-server)).
+3. **Assistants** («دستیارها و دسترسی»): create a token and grant access.
+4. Connect an assistant, for example Claude Code:
 
 ```bash
 claude mcp add --transport http terminal-bridge http://127.0.0.1:8750/mcp --header "Authorization: Bearer TOKEN"
 ```
 
-سپس از دستیار بخواهید: «با ابزار terminal-bridge فهرست سرورها را بگیر و تست‌های پروژه را اجرا کن».
+Then ask the assistant: "Use the terminal-bridge tools to list the servers and run the project's tests."
 
-## مستندات
+## Documentation
 
-| سند | موضوع |
+| Document | Topic |
 |---|---|
-| [نصب و استفاده](docs/USAGE.md) | Docker، نصب مستقیم، سرور مقصد، پشتیبان‌گیری، رفع اشکال |
-| [اتصال دستیارها](docs/CLIENTS.md) | Claude، Gemini، Codex، Cursor، VS Code، Open WebUI، Ollama و ... |
-| [امنیت](docs/SECURITY.md) | مدل تهدید و محدودیت‌ها |
-| [معماری](docs/ARCHITECTURE.md) | اجزا و تصمیم‌های فنی |
-| [سناریوها](docs/SCENARIOS.md) | مثال‌های عملی و تست‌ها |
-| [ابزارها](docs/TOOLS.md) · [API](docs/API.md) · [تنظیمات](docs/CONFIG.md) | مرجع (تولیدشده از کد) |
+| [Installation and usage](docs/USAGE.md) | Docker, native install, target server, backups, troubleshooting |
+| [Connecting assistants](docs/CLIENTS.md) | Claude, Gemini, Codex, Cursor, VS Code, Open WebUI, Ollama and more |
+| [Security](docs/SECURITY.md) | Threat model and limitations |
+| [Architecture](docs/ARCHITECTURE.md) | Components and technical decisions |
+| [Scenarios](docs/SCENARIOS.md) | Practical examples and their tests |
+| [Tools](docs/TOOLS.md) · [API](docs/API.md) · [Configuration](docs/CONFIG.md) | Reference (generated from the code) |
 
-## پوشش مشخصات
+## Feature status
 
-✅ ساخته و آزمایش‌شده · 🟡 ناقص یا آزمایش‌نشده (توضیح در همان سطر) · ❌ ساخته نشده
+✅ built and tested · 🟡 partial or untested (explained in the same row) · ❌ not built
 
-### قابلیت‌ها (بند ۲ و ۴)
+### Capabilities
 
-| خواسته | وضعیت |
+| Feature | Status |
 |---|---|
-| اتصال SSH، کلید یا گذرواژه، سنجاق کلید میزبان | ✅ کلید در تست خودکار؛ گذرواژه با یک آزمایش جداگانه روی sshd واقعی |
-| مقصد Linux | ✅ |
-| مقصد Windows / macOS | 🟡 آزمایش نشده؛ دستورها و ابزارهای سیستمی برای Linux نوشته شده‌اند |
-| اجرای دستور، خروجی تدریجی، توقف، دستور طولانی | ✅ |
-| خواندن، ساخت، ویرایش، حذف، آپلود و دانلود فایل | ✅ (حداکثر ۵ مگابایت) |
-| انتقال/تغییر نام فایل | 🟡 ابزار جدا ندارد؛ با `execute_command` (`mv`) |
-| مدیریت پروژه | 🟡 با مسیرهای مجاز، فایل‌ها و git؛ موجودیت مستقل «پروژه» ندارد |
-| نصب وابستگی | 🟡 با اجرای دستور؛ دسترسی شبکه‌ی sandbox تست شد، نصب واقعی بسته از اینترنت نه |
-| اجرای اسکریپت و تست | ✅ با `make`/`unittest`؛ 🟡 مسیرهای `pytest`، `npm`، `go`، `cargo` در `run_tests` جداگانه آزمایش نشده‌اند |
-| Git | ✅ محلی (init، status، add، commit، log)؛ 🟡 clone/pull/push با مخزن راه‌دور آزمایش نشده |
-| Docker و Compose | ✅ با Docker واقعی و تصویر محلی |
-| پردازه‌ها، منابع، لاگ فایل و Docker | ✅ |
-| سرویس‌های systemd و لاگ journal | 🟡 پیاده شده، **آزمایش نشده** (محیط توسعه systemd نداشت) |
-| نشست تعاملی | ✅ برای انسان (ترمینال وب؛ با tmux ماندگار)؛ ❌ برای دستیار |
-| چند سرور هم‌زمان، ادامه پس از قطع اتصال | ✅ |
-| snapshot و بازگردانی | ✅ (snapshot تا ۱ گیگابایت) |
+| SSH connection, key or password, host key pinning | ✅ keys in the automated tests; passwords in a separate test against a real sshd |
+| Linux targets | ✅ |
+| Windows / macOS targets | 🟡 untested; the commands and system tools are written for Linux |
+| Command execution, incremental output, termination, long-running commands | ✅ |
+| Read, create, edit, delete, upload and download files | ✅ (up to 5 MB) |
+| Move/rename files | 🟡 no dedicated tool; use `execute_command` (`mv`) |
+| Project management | 🟡 through allowed paths, files and git; there is no separate "project" entity |
+| Installing dependencies | 🟡 by running commands; sandbox network access was tested, installing a real package from the internet was not |
+| Running scripts and tests | ✅ with `make`/`unittest`; 🟡 the `pytest`, `npm`, `go` and `cargo` paths of `run_tests` are not individually tested |
+| Git | ✅ local (init, status, add, commit, log); 🟡 clone/pull/push with a remote repository are untested |
+| Docker and Compose | ✅ with a real Docker and a local image |
+| Processes, resources, file and Docker logs | ✅ |
+| systemd services and journal logs | 🟡 implemented, **untested** (the development environment had no systemd) |
+| Interactive sessions | ✅ for humans (web terminal; persistent with tmux); ❌ for assistants |
+| Several servers at once, resuming after a disconnect | ✅ |
+| Snapshots and rollback | ✅ (snapshots up to 1 GB) |
 
-### رابط‌ها و داشبورد (بند ۳ و ۵)
+### Interfaces and dashboard
 
-| خواسته | وضعیت |
+| Feature | Status |
 |---|---|
-| MCP (HTTP و stdio)، REST، WebSocket، CLI، قالب OpenAI | ✅ |
-| Claude Code، Gemini CLI، Codex CLI | 🟡 اتصال واقعی آزمایش شد؛ هیچ مدلی کاری انجام نداد |
-| Claude Desktop (Windows) | ✅ چند ابزار با مدل واقعی روی سرور واقعی ([جزئیات](docs/CLIENTS.md))؛ تأیید و بازگردانی از این مسیر آزمایش نشده |
-| Cursor، VS Code، Open WebUI، Hermes، Ollama | 🟡 راهنما دارد، آزمایش نشده |
-| ChatGPT | ❌ نیازمند OAuth |
-| سرورها، دستیارها، دسترسی‌ها، توکن‌ها، تأییدها | ✅ |
-| ترمینال زنده، مدیر فایل، ویرایشگر کد، تاریخچه‌ی دستورها، فعالیت زنده | ✅ |
-| پایش CPU، RAM، دیسک، شبکه | ✅ |
-| تم روشن و تیره، واکنش‌گرا | ✅ |
-| دیدن تغییر فایل پیش از اعمال | 🟡 برای عملیات نیازمند تأیید و ویرایش خودتان؛ در سطح‌های بدون تأیید تغییر فوراً اعمال می‌شود (قابل بازگردانی) |
-| فهرست اتصال‌های SSH و نشست‌ها | 🟡 صفحه‌ی مستقل ندارد (دستورها و آزمایش اتصال دارد) |
-| تنظیمات امنیتی | 🟡 گذرواژه، کاربران، توقف اضطراری؛ محدودیت نرخ و `deny_globs` فقط از API |
+| MCP (HTTP and stdio), REST, WebSocket, CLI, OpenAI format | ✅ |
+| Claude Code, Gemini CLI, Codex CLI | 🟡 real connections tested; no model performed any work |
+| Claude Desktop (Windows) | ✅ several tools with a real model on a real server ([details](docs/CLIENTS.md)); approval and rollback untested through this route |
+| Cursor, VS Code, Open WebUI, Hermes, Ollama | 🟡 guide provided, untested |
+| ChatGPT | ❌ requires OAuth |
+| Servers, assistants, grants, tokens, approvals | ✅ |
+| Live terminal, file manager, code editor, command history, live activity | ✅ |
+| CPU, RAM, disk and network monitoring | ✅ |
+| Light and dark themes, responsive layout | ✅ |
+| English dashboard UI | ❌ Persian only |
+| Reviewing file changes before they are applied | 🟡 for operations that need approval and for your own edits; at levels without approval the change applies immediately (it can be rolled back) |
+| List of SSH connections and sessions | 🟡 no dedicated page (commands and connection test are available) |
+| Security settings | 🟡 password, users, emergency stop; rate limit and `deny_globs` only through the API |
 
-### دسترسی و امنیت (بند ۶ و ۷)
+### Access and security
 
-| خواسته | وضعیت |
+| Feature | Status |
 |---|---|
-| پنج سطح دسترسی برای هر دستیار و سرور | ✅ |
-| دسترسی جدا برای هر پروژه | 🟡 با قواعد مسیر (rw/ro)؛ برای سطح متفاوت روی یک سرور دستیار دوم بسازید |
-| دسترسی جدا برای هر کاربر و RBAC | 🟡 دو نقش `admin` و `user`؛ هر کاربر فقط منابع خود را می‌بیند؛ نقش سفارشی ندارد |
-| رمزنگاری اسرار، SSH Key، هش گذرواژه و توکن | ✅ |
-| ارتباط رمزشده | ✅ SSH؛ HTTPS با Caddy (آزمایش محلی با بسته‌ی Ubuntu، نه دامنه‌ی عمومی) |
-| ورود امن | ✅ گذرواژه و قفل موقت؛ ❌ ورود دومرحله‌ای و OAuth |
-| sandbox | ✅ bubblewrap برای `developer` و `force_sandbox`؛ ❌ اجرای ایزوله با Docker |
-| محدودیت دستور و مسیر، Command Injection | ✅ (فیلتر دستور مرز امنیتی نیست) |
-| Prompt Injection | 🟡 فقط کاهش اثر با دسترسی و تأیید؛ راه‌حل کامل ندارد |
-| پوشاندن اسرار | 🟡 بر اساس الگو؛ قابل دور زدن |
-| محدودیت منابع و زمان | 🟡 زمان، خروجی، هم‌زمانی، نرخ؛ حافظه اختیاری؛ ❌ CPU و دیسک |
-| Audit Log، تأیید، توقف فوری، بازگردانی | ✅ |
-| بدون نیاز به root | ✅ (اگر خودتان کاربر root اضافه کنید جلوگیری نمی‌شود؛ `connect_server` آن را گزارش می‌کند) |
+| Five permission levels per assistant and server | ✅ |
+| Separate access per project | 🟡 through path rules (rw/ro); for a different level on the same server, create a second assistant |
+| Separate access per user and RBAC | 🟡 two roles, `admin` and `user`; each user sees only their own resources; no custom roles |
+| Encrypted secrets, SSH keys, password and token hashing | ✅ |
+| Encrypted transport | ✅ SSH; HTTPS with Caddy (tested locally with the Ubuntu package, not on a public domain) |
+| Secure sign-in | ✅ password and temporary lockout; ❌ two-factor sign-in and OAuth |
+| Sandbox | ✅ bubblewrap for `developer` and `force_sandbox`; ❌ isolated execution with Docker |
+| Command and path restrictions, command injection | ✅ (the command filter is not a security boundary) |
+| Prompt injection | 🟡 impact is only reduced through permissions and approval; there is no complete solution |
+| Secret masking | 🟡 pattern based; can be bypassed |
+| Resource and time limits | 🟡 time, output, concurrency, rate; memory optional; ❌ CPU and disk |
+| Audit log, approval, immediate stop, rollback | ✅ |
+| No root required | ✅ (nothing stops you from adding the root user yourself; `connect_server` reports it) |
 
-### فنی (بند ۹)
+### Technical
 
-ماژولار و async ✅ · خودمیزبان و بدون سرویس پولی ✅ · چند کاربر و چند دستیار ✅ · افزونه ✅ · مستندات API ✅ · Docker Compose ✅ · VPS کوچک 🟡 (مصرف اندازه‌گیری شد، روی VPS واقعی اجرا نشد)
+Modular and async ✅ · self-hosted with no paid service ✅ · multiple users and assistants ✅ · plugins ✅ · API documentation ✅ · Docker Compose ✅ · small VPS 🟡 (resource use was measured, not run on a real VPS)
 
-## وضعیت آزمایش
+## Testing status
 
-محیط توسعه: Linux (Ubuntu)، Python 3.13، Node 22، OpenSSH و bubblewrap واقعی.
+Development environment: Linux (Ubuntu), Python 3.13, Node 22, real OpenSSH and bubblewrap.
 
-- **تست خودکار:** ۱۴۰ تست روی SQLite و نیز روی PostgreSQL 16 (شامل ۷ تست Docker)؛ `ruff` بدون خطا.
-- **داشبورد:** یک سناریوی کامل در مرورگر واقعی (Chrome) از ورود تا تأیید، ویرایش فایل، ترمینال، توقف اضطراری و نمای موبایل.
-- **Docker Compose:** در محیط توسعه (با تصاویر پایه‌ی جایگزین): ساخت، اجرا، سلامت، راه‌اندازی مجدد هنگام اجرای دستور، کاربر غیر root و فایل‌سیستم فقط‌خواندنی. روی Windows با Docker Desktop و تصاویر رسمی: ساخت، اجرا، سلامت، ورود و افزودن یک سرور لینوکسی واقعی.
-- **مدل واقعی:** Claude از راه Claude Desktop روی Windows فهرست سرورها، اتصال، ساخت پوشه، نوشتن فایل و اجرای آن در sandbox را انجام داد.
-- **کلاینت‌ها:** Claude Code 2.1.332، Gemini CLI 0.71.1، Codex CLI 0.172.0 (اتصال، بدون مدل).
-- **آزمایش نشده:** تأیید عملیات و بازگردانی با مدل واقعی، سایر کلاینت‌های جدول، systemd، دامنه‌ی عمومی، پروفایل‌های `https` و `postgres` در Compose، نصب مستقیم روی Windows (بدون Docker) و macOS.
-- **CI گیت‌هاب:** فقط `ruff`، تست‌های واحد و مستندات و ساخت داشبورد؛ تست‌های SSH را روی Linux خودتان اجرا کنید.
+- **Automated tests:** 140 tests on SQLite and also on PostgreSQL 16 (including 7 Docker tests); `ruff` reports no errors.
+- **Dashboard:** one complete scenario in a real browser (Chrome), from sign-in to approval, file editing, terminal, emergency stop and the mobile view.
+- **Docker Compose:** in the development environment (with substitute base images): build, run, health, restart while a command is running, non-root user and read-only filesystem. On Windows with Docker Desktop and the official images: build, run, health, sign-in and adding a real Linux server.
+- **Real model:** Claude, through Claude Desktop on Windows, listed servers, connected, created a folder, wrote a file and ran it in the sandbox.
+- **Clients:** Claude Code 2.1.332, Gemini CLI 0.71.1, Codex CLI 0.172.0 (connection only, no model).
+- **Untested:** approval and rollback with a real model, the other clients in the table, systemd, a public domain, the `https` and `postgres` Compose profiles, native installation on Windows (without Docker) and macOS.
+- **GitHub CI:** only `ruff`, the unit and documentation tests, and the dashboard build; run the SSH tests on your own Linux machine.
 
-این تست‌ها نشان می‌دهند کنترل‌ها در سناریوهای آزموده‌شده کار می‌کنند؛ جای آزمون نفوذ مستقل را نمی‌گیرند.
+These tests show that the controls work in the scenarios tested; they do not replace an independent penetration test.
 
-## کارایی
+## Performance
 
-روی ۲ هسته و ۷ گیگابایت حافظه؛ پل، sshd و کلاینت روی **یک ماشین**؛ ۱۰۰ درخواست در هر ردیف. روی شبکه‌ی واقعی تأخیر بیشتر است.
+Measured on 2 cores and 7 GB of memory, with the bridge, sshd and the client on **one machine**, 100 requests per row. Latency is higher over a real network.
 
-حافظه‌ی پل: حدود ۱۱۷ مگابایت در بیکاری، اوج حدود ۱۸۰.
+Bridge memory: about 117 MB idle, peaking at about 180 MB.
 
-| هم‌زمانی | `read_file` میانه/p95 (ms)، req/s | `list_directory` | `execute_command` |
+| Concurrency | `read_file` median/p95 (ms), req/s | `list_directory` | `execute_command` |
 |---|---|---|---|
-| ۱ | 31/45 ، 31 | 25/34 ، 38 | 129/150 ، 8.1 |
-| ۴ | 96/122 ، 41 | 81/116 ، 48 | 223/304 ، 17 |
-| ۱۶ | 338/467 ، 47 | 312/403 ، 50 | 760/1125 ، 19 |
+| 1 | 31/45, 31 | 25/34, 38 | 129/150, 8.1 |
+| 4 | 96/122, 41 | 81/116, 48 | 223/304, 17 |
+| 16 | 338/467, 47 | 312/403, 50 | 760/1125, 19 |
 
-تکرار: `python backend/scripts/benchmark.py --help`
+To reproduce: `python backend/scripts/benchmark.py --help`
 
-## ساختار
+## Layout
 
 ```
-backend/    پل (Python/FastAPI)، تست‌ها، اسکریپت‌ها
-frontend/   داشبورد (React/TypeScript)
-docs/       مستندات
-examples/   عامل سازگار با OpenAI و نمونه‌ی افزونه
-deploy/     پیکربندی Caddy
+backend/    the bridge (Python/FastAPI), tests, scripts
+frontend/   the dashboard (React/TypeScript)
+docs/       documentation
+examples/   an OpenAI-compatible agent and a sample plugin
+deploy/     Caddy configuration
 ```
 
-## توسعه
+## Development
 
 ```bash
 pip install -e "./backend[dev]"
-cd frontend && npm ci && npm run dev      # داشبورد با پروکسی به پل روی 8750
-python backend/scripts/gen_docs.py        # پس از تغییر ابزارها، API یا تنظیمات
+cd frontend && npm ci && npm run dev      # dashboard, proxied to the bridge on 8750
+python backend/scripts/gen_docs.py        # after changing tools, the API or settings
 ```
 
-## مجوز
+## License
 
-[MIT](LICENSE). مجوز کتابخانه‌ها و قلم Vazirmatn (OFL) که در داشبورد بسته‌بندی شده‌اند در [third-party-licenses.txt](frontend/public/third-party-licenses.txt) آمده است.
+[MIT](LICENSE). Licenses of the libraries and of the Vazirmatn font (OFL) bundled with the dashboard are listed in [third-party-licenses.txt](frontend/public/third-party-licenses.txt).

@@ -1,70 +1,70 @@
-# امنیت و مدل تهدید
+# Security and threat model
 
-**خلاصه:** این پل جلوی دسترسی ناخواسته را می‌گیرد، همه‌چیز را ثبت می‌کند و عملیات حساس را به تأیید انسان می‌سپارد؛ ولی **فیلتر دستورها مرز امنیتی نیست.** مرزهای واقعی این‌ها هستند:
+**Summary:** the bridge blocks unwanted access, records everything and hands sensitive operations to a human for approval; but **the command filter is not a security boundary.** The real boundaries are:
 
-1. کاربر لینوکسی که پل با آن به سرور وصل می‌شود (هرچه آن کاربر می‌تواند، سقفِ آسیب است)،
-2. بررسی مسیر در ابزارهای فایل (SFTP، پس از resolve کردن symlink روی خود سرور)،
-3. sandbox (bubblewrap) برای دستورها،
-4. تأیید انسانی.
+1. the Linux user the bridge connects to the server as (whatever that user can do is the ceiling of the damage),
+2. path checks in the file tools (over SFTP, after symlinks are resolved on the server itself),
+3. the sandbox (bubblewrap) for commands,
+4. human approval.
 
-نرم‌افزار ممیزی امنیتی مستقل نشده است.
+The software has not been independently security audited.
 
-## دارایی‌ها و مرزهای اعتماد
+## Assets and trust boundaries
 
-| دارایی | محل | محافظت |
+| Asset | Location | Protection |
 |---|---|---|
-| کلید خصوصی و گذرواژه‌ی SSH | پایگاه‌داده‌ی پل | AES-256-GCM با associated data مخصوص هر رکورد؛ هرگز از API برنمی‌گردد |
-| کلید اصلی | `master.key` (مجوز 0600) یا `ATB_MASTER_KEY` | خارج از پایگاه‌داده؛ در شروع برنامه صحت آن بررسی می‌شود |
-| گذرواژه‌ی کاربران | پایگاه‌داده | argon2 |
-| توکن نشست و دستیار | پایگاه‌داده | فقط هش SHA-256 (توکن‌ها ۲۵۶ بیت تصادفی‌اند) |
-| متن دستورها، پیش‌نمایش تأیید، نسخه‌ی قبلی فایل‌ها | پایگاه‌داده | رمزنگاری‌شده |
-| گزارش فعالیت (Audit) | پایگاه‌داده | زنجیره‌ی هش؛ متن‌ها پیش از ثبت پوشانده می‌شوند و بدنه‌ی فایل‌ها فقط به‌صورت هش ثبت می‌شود |
+| SSH private keys and passwords | bridge database | AES-256-GCM with per-record associated data; never returned by the API |
+| Master key | `master.key` (mode 0600) or `ATB_MASTER_KEY` | outside the database; verified at start-up |
+| User passwords | database | argon2 |
+| Session and assistant tokens | database | SHA-256 hash only (tokens are 256 random bits) |
+| Command text, approval previews, previous file versions | database | encrypted |
+| Activity log (audit) | database | hash chain; text is masked before being recorded, and file bodies are recorded only as hashes |
 
-بازیگران نامطمئن: **خود مدل هوش مصنوعی** و هر متنی که می‌خواند (کد، لاگ، خروجی دستور)، هرکس که توکن دستیار را به دست آورد، و کلاینت‌های شبکه‌ای. مورد اعتماد: مدیر پل، ماشینی که پل روی آن اجرا می‌شود، و افزونه‌های نصب‌شده.
+Untrusted actors: **the AI model itself** and any text it reads (code, logs, command output), anyone who obtains an assistant token, and network clients. Trusted: the bridge administrator, the machine the bridge runs on, and installed plugins.
 
-کسی که ماشین پل را تصرف کند (پایگاه‌داده به‌علاوه‌ی کلید اصلی) به همه‌ی سرورها دسترسی دارد. آن ماشین را مثل یک bastion محافظت کنید.
+Whoever takes over the bridge machine (the database plus the master key) has access to every server. Protect that machine like a bastion host.
 
-## تهدیدها و پاسخ‌ها
+## Threats and responses
 
-| تهدید | کنترل | آنچه باقی می‌ماند |
+| Threat | Control | What remains |
 |---|---|---|
-| Prompt injection از محتوای سرور | سیاست دسترسی سمت پل اعمال می‌شود، نه در prompt؛ دستور مدل چیزی را از سیاست عبور نمی‌دهد؛ به مدل گفته می‌شود محتوا را داده بداند | **حل‌شدنی نیست.** مدلِ فریب‌خورده می‌تواند هر کاری را که دسترسی‌اش اجازه می‌دهد انجام دهد، از جمله فرستادن داده به بیرون اگر شبکه باز باشد |
-| Command injection در ابزارها | ورودی‌ها با schema اعتبارسنجی و با `shlex` نقل‌قول می‌شوند؛ نام سرویس/کانتینر، ref و URL گیت محدودند (`ext::` رد می‌شود) | `execute_command` ذاتاً shell است |
-| خروج از مسیر مجاز | resolve روی سرور، سپس تطبیق با قواعد؛ ریشه‌ی مجاز نباید symlink باشد | فقط ابزارهای فایل؛ shell بدون sandbox محدود به مسیر نیست |
-| فرار از طریق فایل‌های خودکار | نوشتن در `.bashrc`، `.profile`، واحدهای systemd کاربر و مانند آن برای دستیار ممنوع؛ sandbox مسیر نوشتنیِ شامل home را رد می‌کند | کد، Makefile یا تنظیمات پروژه که بعداً بیرون از sandbox اجرا شود (CI، سرویس، خود شما) |
-| دستور ویرانگر | چند الگو همیشه رد می‌شوند (`rm /`، `mkfs`، نوشتن روی دیسک، fork bomb)؛ الگوهای «مخرب» تأیید می‌خواهند | با کدگذاری، اسکریپت یا زبان دیگر **دور زده می‌شود** |
-| تأیید فریبنده | پیش‌نمایش دقیق (دستور یا diff) بدون پوشاندن؛ نویسه‌های نامرئی و دوجهته در داشبورد آشکار می‌شوند؛ تأیید یک‌بارمصرف و وابسته به ورودی و وضعیت فایل | انسان ممکن است بدون خواندن تأیید کند؛ دستوری مثل `./deploy.sh` محتوای اسکریپت را نشان نمی‌دهد |
-| نشت اسرار | پوشاندن الگوهای شناخته‌شده در خروجی دستیار؛ مسیرهای حساس ممنوع | **دور زده می‌شود** (مثلاً `base64`)؛ فهرست پردازه‌ها و `docker inspect` ممکن است سرّ داشته باشند |
-| سرقت توکن دستیار | محدود به همان دسترسی‌ها؛ چرخش و توقف فوری؛ محدودیت نرخ | تا پیش از ابطال قابل استفاده است |
-| MITM روی SSH | کلید میزبان با تأیید انسان سنجاق می‌شود؛ تغییر آن رد می‌شود | اگر اثر انگشت را بدون مقایسه تأیید کنید، محافظتی ندارد |
-| DNS rebinding و مرورگر | بررسی Host/Origin برای `/mcp`، CSP محدود، توکن در سرآیند (نه کوکی) | `/api/docs` فایل‌ها را از CDN می‌گیرد و CSP ندارد |
-| حدس گذرواژه | قفل موقت پس از ۸ خطا در ۵ دقیقه برای هر زوج IP و نام کاربری | حمله‌ی توزیع‌شده؛ ورود دومرحله‌ای وجود ندارد |
-| مصرف منابع | مهلت اجرا، سقف خروجی، سقف دستور هم‌زمان، محدودیت نرخ، سقف حجم درخواست | CPU و دیسک سرور محدود نمی‌شوند؛ از cgroup یا سهمیه‌ی سیستم‌عامل استفاده کنید |
+| Prompt injection from server content | the access policy is enforced by the bridge, not in the prompt; nothing the model says gets past the policy; the model is told to treat content as data | **Cannot be solved.** A deceived model can do anything its grant allows, including sending data out if the network is open |
+| Command injection in tools | inputs are schema validated and quoted with `shlex`; service/container names, git refs and URLs are restricted (`ext::` is rejected) | `execute_command` is a shell by nature |
+| Leaving the allowed path | resolved on the server, then matched against the rules; an allowed root must not be a symlink | file tools only; a shell without the sandbox is not confined to paths |
+| Escape through auto-run files | assistants may not write `.bashrc`, `.profile`, user systemd units and the like; the sandbox rejects writable paths that contain home | project code, Makefiles or settings that later run outside the sandbox (CI, a service, you) |
+| Destructive commands | a few patterns are always denied (`rm /`, `mkfs`, writing to a disk, fork bomb); "destructive" patterns require approval | **Can be bypassed** with encoding, a script or another language |
+| Deceptive approvals | exact preview (command or diff) without masking; invisible and bidirectional characters are made visible in the dashboard; an approval is single use and tied to the arguments and file state | a human may approve without reading; a command such as `./deploy.sh` does not show the script's content |
+| Secret leakage | known patterns are masked in output to assistants; sensitive paths are denied | **Can be bypassed** (for example with `base64`); the process list and `docker inspect` may contain secrets |
+| Stolen assistant token | limited to the same grants; rotation and immediate suspension; rate limit | usable until revoked |
+| MITM on SSH | the host key is pinned after human confirmation; a changed key is rejected | no protection if you confirm the fingerprint without comparing it |
+| DNS rebinding and browsers | Host/Origin checks for `/mcp`, strict CSP, token in a header (not a cookie) | `/api/docs` loads files from a CDN and has no CSP |
+| Password guessing | temporary lockout after 8 failures in 5 minutes per IP and user name pair | distributed attacks; there is no two-factor sign-in |
+| Resource consumption | execution timeout, output cap, concurrent command cap, rate limit, request size cap | server CPU and disk are not limited; use cgroups or operating system quotas |
 
-## محدودیت‌های مشخص (حتماً بخوانید)
+## Specific limitations (read these)
 
-- **`operator`، `approval_required` و `autonomous` دستورها را بدون sandbox اجرا می‌کنند** مگر `force_sandbox` روشن باشد. قواعد مسیر در این حالت فقط ابزارهای فایل و پوشه‌ی شروع دستور را محدود می‌کنند.
-- **رقابت زمانی (TOCTOU):** دستیار `developer` که دستور پس‌زمینه‌ی در حال اجرا دارد می‌تواند هم‌زمان symlinkها را عوض کند و بررسی مسیرِ ابزارهای فایل را دور بزند.
-- داخل sandbox فقط پوشه‌های حساسِ سطح اول (در ریشه‌ی مسیرهای مجاز و home) پنهان می‌شوند؛ فایل حساسِ تو در تو داخل پروژه دیده می‌شود.
-- شبکه‌ی sandbox پیش‌فرض خاموش است. `sandbox_network` شبکه‌ی **کامل** سرور (از جمله سرویس‌های محلی آن) را باز می‌کند؛ فیلتر مقصد ندارد.
-- دسترسی Docker عملاً هم‌ارز root است. `use_sudo_for_services` به قاعده‌ی sudo بدون گذرواژه نیاز دارد؛ آن قاعده را به همان `systemctl`های لازم محدود کنید.
-- پردازه‌ای که خودش را با `setsid` جدا کند ممکن است از توقف (و توقف اضطراری) در امان بماند. در sandbox فضای PID جدا و `--die-with-parent` این راه را محدود می‌کند.
-- Audit: حذف آخرین رکوردها فقط وقتی قابل کشف است که هش آخر (`atb verify-audit` فیلد `head`) را بیرون از سیستم نگه داشته باشید. مرور فقط‌خواندنیِ کاربر انسانی و کلیدهای فشرده‌شده در ترمینال ثبت نمی‌شود (باز و بسته شدن ترمینال ثبت می‌شود).
-- توقف اضطراری فقط **دستیارها** را متوقف می‌کند، نه کاربران انسانی.
-- محدودیت حجم درخواست در خود پل بر `Content-Length` تکیه دارد؛ پیکربندی Caddy آن را جداگانه اعمال می‌کند.
-- OAuth، ورود دومرحله‌ای و کلید SSH دارای passphrase پشتیبانی نمی‌شوند.
-- افزونه‌ها داخل فرایند پل با اعتماد کامل اجرا می‌شوند.
-- دستور `max_memory_mb` با `ulimit -v` (حافظه‌ی مجازی) اعمال می‌شود، نه حافظه‌ی واقعی؛ برخی برنامه‌ها مثل Node زیر چند گیگابایت خطا می‌دهند.
+- **`operator`, `approval_required` and `autonomous` run commands without the sandbox** unless `force_sandbox` is on. In that case path rules restrict only the file tools and the command's starting directory.
+- **Race condition (TOCTOU):** a `developer` assistant with a background command running can swap symlinks at the same time and get around the file tools' path check.
+- Inside the sandbox, only top-level sensitive folders (at the root of the allowed paths and of home) are hidden; a sensitive file nested inside a project is visible.
+- The sandbox network is off by default. `sandbox_network` opens the server's **entire** network (including its local services); there is no destination filter.
+- Docker access is effectively equivalent to root. `use_sudo_for_services` needs a passwordless sudo rule; limit that rule to the `systemctl` commands you need.
+- A process that detaches itself with `setsid` may survive termination (and the emergency stop). In the sandbox, a separate PID namespace and `--die-with-parent` limit this.
+- Audit: deletion of the latest records can be detected only if you keep the last hash (the `head` field of `atb verify-audit`) outside the system. A human user's read-only browsing and the keys typed in the terminal are not recorded (opening and closing the terminal is).
+- The emergency stop stops **assistants** only, not human users.
+- The request size limit in the bridge itself relies on `Content-Length`; the Caddy configuration enforces it separately.
+- OAuth, two-factor sign-in and passphrase-protected SSH keys are not supported.
+- Plugins run inside the bridge process with full trust.
+- `max_memory_mb` is enforced with `ulimit -v` (virtual memory), not real memory; some programs, such as Node, fail below a few gigabytes.
 
-## پیکربندی توصیه‌شده
+## Recommended configuration
 
-1. روی هر سرور یک کاربر جدا و بدون sudo برای پل بسازید ([راهنما](USAGE.md#آماده-کردن-سرور-مقصد)).
-2. از `developer` (sandbox) یا `approval_required` شروع کنید؛ `autonomous` را فقط روی ماشین دورریختنی بدهید.
-3. مسیرها را تا حد امکان تنگ بگیرید.
-4. پل را روی `127.0.0.1` یا VPN نگه دارید؛ اگر عمومی می‌کنید حتماً HTTPS.
-5. `master.key` را جدا از پایگاه‌داده پشتیبان بگیرید.
-6. پیش از تأیید، پیش‌نمایش را کامل بخوانید.
+1. On every server, create a separate user without sudo for the bridge ([guide](USAGE.md#preparing-the-target-server)).
+2. Start with `developer` (sandbox) or `approval_required`; grant `autonomous` only on a disposable machine.
+3. Keep paths as narrow as possible.
+4. Keep the bridge on `127.0.0.1` or a VPN; if you expose it publicly, always use HTTPS.
+5. Back up `master.key` separately from the database.
+6. Read the whole preview before approving.
 
-## گزارش آسیب‌پذیری
+## Reporting a vulnerability
 
-پروژه هنوز مخزن عمومی و نشانی گزارش ندارد؛ پیش از انتشار عمومی یکی تعیین کنید.
+See the [security policy](../.github/SECURITY.md). Please do not publish details in a public issue.

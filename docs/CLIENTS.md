@@ -1,29 +1,29 @@
-# اتصال دستیارها
+# Connecting assistants
 
-ابتدا در داشبورد: «دستیارها» ← ساخت توکن ← «اعطای دسترسی» روی سرور. توکن فقط یک بار نمایش داده می‌شود. برای هر دستیار توکن جدا بسازید.
+First, in the dashboard (Persian UI): **Assistants** («دستیارها و دسترسی») → create a token → **Grant access** («اعطای دسترسی») on a server. The token is shown only once. Create a separate token for every assistant.
 
-نمونه‌ها نشانی `http://127.0.0.1:8750` را فرض می‌کنند.
+The examples assume the address `http://127.0.0.1:8750`.
 
-## وضعیت سازگاری
+## Compatibility status
 
-| کلاینت | روش | وضعیت |
+| Client | Method | Status |
 |---|---|---|
-| Claude Code (نسخه 2.1.332) | HTTP و stdio | ✅ اتصال و دست‌دهی آزمایش شد؛ مدل فراخوانی نشد |
-| Gemini CLI (نسخه 0.71.1) | HTTP و stdio | ✅ اتصال و دست‌دهی آزمایش شد؛ مدل فراخوانی نشد |
-| Codex CLI (نسخه 0.172.0) | HTTP و stdio | ✅ اتصال و فهرست ۲۵ ابزار آزمایش شد؛ مدل فراخوانی نشد |
-| MCP Python SDK، REST، WebSocket، قالب OpenAI، CLI | — | ✅ فراخوانی ابزار در تست خودکار (مدلِ اسکریپتی، نه مدل واقعی) |
-| Claude Desktop (Windows) | stdio محلی | ✅ روی یک ماشین با بسته‌ی MSIX نسخه‌ی 6.28899.6: چند ابزار با مدل واقعی اجرا شد (فهرست در بخش Claude Desktop) |
-| Claude (وب و موبایل، connector سفارشی) | HTTPS عمومی | ⚠️ آزمایش نشده؛ محدودیت‌ها را پایین ببینید |
-| Cursor، VS Code، Open WebUI، Hermes Agent | HTTP | ⚠️ آزمایش نشده؛ بر پایه‌ی مستندات رسمی |
-| Ollama و مدل‌های محلی | `examples/openai_agent.py` | ⚠️ اسکریپت با مدل ساختگی تست شد؛ با Ollama واقعی نه |
-| ChatGPT (connector) | — | ❌ پشتیبانی نمی‌شود |
+| Claude Code (version 2.1.332) | HTTP and stdio | ✅ connection and handshake tested; no model was called |
+| Gemini CLI (version 0.71.1) | HTTP and stdio | ✅ connection and handshake tested; no model was called |
+| Codex CLI (version 0.172.0) | HTTP and stdio | ✅ connection and listing of 25 tools tested; no model was called |
+| MCP Python SDK, REST, WebSocket, OpenAI format, CLI | — | ✅ tool calls in the automated tests (a scripted model, not a real one) |
+| Claude Desktop (Windows) | local stdio | ✅ on one machine with the MSIX package, version 6.28899.6: several tools ran with a real model (listed in the Claude Desktop section) |
+| Claude (web and mobile, custom connector) | public HTTPS | ⚠️ untested; see the limitations below |
+| Cursor, VS Code, Open WebUI, Hermes Agent | HTTP | ⚠️ untested; based on the official documentation |
+| Ollama and local models | `examples/openai_agent.py` | ⚠️ the script was tested with a fake model, not with a real Ollama |
+| ChatGPT (connector) | — | ❌ not supported |
 
 ## Claude Code
 
 ```bash
 claude mcp add --transport http terminal-bridge http://127.0.0.1:8750/mcp \
   --header "Authorization: Bearer TOKEN"
-# یا stdio:
+# or stdio:
 claude mcp add terminal-bridge -e ATB_URL=http://127.0.0.1:8750 -e ATB_AGENT_TOKEN=TOKEN -- atb mcp-stdio
 claude mcp list
 ```
@@ -32,26 +32,26 @@ claude mcp list
 
 ```bash
 gemini mcp add --scope user --transport http --header "Authorization: Bearer TOKEN" terminal-bridge http://127.0.0.1:8750/mcp
-# یا stdio:
+# or stdio:
 gemini mcp add --scope user -e ATB_URL=http://127.0.0.1:8750 -e ATB_AGENT_TOKEN=TOKEN terminal-bridge atb mcp-stdio
 ```
 
-در آزمایش، Gemini CLI فقط پس از «مورد اعتماد» کردن پوشه‌ی جاری سرور را وصل نشان داد.
+In testing, Gemini CLI showed the server as connected only after the current folder was marked as trusted.
 
 ## Codex CLI
 
 ```bash
 export ATB_AGENT_TOKEN=TOKEN
 codex mcp add terminal-bridge --url http://127.0.0.1:8750/mcp --bearer-token-env-var ATB_AGENT_TOKEN
-# یا stdio:
+# or stdio:
 codex mcp add terminal-bridge --env ATB_URL=http://127.0.0.1:8750 --env ATB_AGENT_TOKEN=TOKEN -- atb mcp-stdio
 ```
 
-## Claude Desktop (محلی، stdio)
+## Claude Desktop (local, stdio)
 
-بخش `mcpServers` زیر را در `claude_desktop_config.json` بگذارید. برنامه را **پیش از ویرایش** کامل ببندید (Quit از آیکن کنار ساعت یا نوار منو) و بعد دوباره باز کنید. اگر فایل تنظیمات دیگری هم دارد، فقط کلید `mcpServers` را اضافه کنید و بقیه را پاک نکنید. مراقب باشید دور توکن فاصله‌ی اضافه نماند (خطای `Illegal header value`).
+Put the `mcpServers` block below in `claude_desktop_config.json`. Quit the application completely **before editing** (Quit from the tray or menu bar icon), then open it again. If the file already holds other settings, add only the `mcpServers` key and keep the rest. Make sure no stray spaces surround the token (it causes an `Illegal header value` error).
 
-**محل فایل در Windows** معمولاً `%APPDATA%\Claude\` است، ولی روی نصب‌های بسته‌بندی‌شده (MSIX) ممکن است جای دیگری باشد. روی ماشینی که آزمایش شد، برنامه این فایل را از `%LOCALAPPDATA%\Claude-Data\<نام بسته>\` می‌خواند (مشاهده روی یک ماشین و یک نسخه). برای پیدا کردن پوشه‌ی داده، در حالی که برنامه باز است:
+**The file location on Windows** is usually `%APPDATA%\Claude\`, but packaged (MSIX) installations may use another place. On the machine that was tested, the application read this file from `%LOCALAPPDATA%\Claude-Data\<package name>\` (observed on one machine and one version). To find the data folder while the application is running:
 
 ```powershell
 Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
@@ -59,9 +59,9 @@ Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
   Sort-Object -Unique
 ```
 
-آزمایش‌شده با روش Docker زیر: اتصال از گفتگویی که به همان کامپیوتر وصل بود و ابزارهای `list_servers`، `connect_server`، `create_directory`، `write_file` و `execute_command` (در sandbox) روی یک سرور لینوکسی واقعی. تأیید عملیات و بازگردانی از این مسیر آزمایش نشده است.
+Tested with the Docker method below: connecting from a chat linked to the same computer, and the tools `list_servers`, `connect_server`, `create_directory`, `write_file` and `execute_command` (in the sandbox) on a real Linux server. Approval and rollback have not been tested through this route.
 
-**اگر پل با Docker Compose اجرا می‌شود** (روی میزبان به Python نیاز نیست). مسیر فایل Compose را با مسیر خودتان عوض کنید. اگر برنامه `docker` را پیدا نکرد، مسیر کامل آن را در `command` بگذارید (معمولاً `C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe`):
+**If the bridge runs with Docker Compose** (no Python needed on the host). Replace the Compose file path with your own. If the application cannot find `docker`, put its full path in `command` (usually `C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe`):
 
 ```json
 {
@@ -76,7 +76,7 @@ Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
 }
 ```
 
-**اگر `atb` روی همان ماشین نصب است** (`pip install ./backend`؛ این روش با Claude Desktop آزمایش نشده):
+**If `atb` is installed on the same machine** (`pip install ./backend`; this method has not been tested with Claude Desktop):
 
 ```json
 {
@@ -90,21 +90,21 @@ Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
 }
 ```
 
-اگر Claude Desktop برنامه را پیدا نکرد، مسیر کامل `atb.exe` را در `command` بگذارید.
+If Claude Desktop cannot find the program, put the full path of `atb.exe` in `command`.
 
-## Claude در وب و موبایل (connector سفارشی) — آزمایش نشده
+## Claude on web and mobile (custom connector): untested
 
-- سرور باید با **HTTPS عمومی** از زیرساخت Anthropic در دسترس باشد (نه localhost یا VPN) ([راهنمای پشتیبانی](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)).
-- احراز هویت با توکن ثابت در «Request headers» انجام می‌شود، ولی مستندات توسعه‌دهندگان آن را قابلیت بتا برای سازمان‌های محدود توصیف می‌کنند ([remote MCP](https://claude.com/docs/connectors/custom/remote-mcp)، [authentication](https://claude.com/docs/connectors/building/authentication)). اگر این گزینه را ندارید، وصل نمی‌شود چون پل OAuth ندارد.
-- عمومی کردن پلی که به ترمینال سرور راه دارد ریسک جدی است؛ ترجیحاً از Claude Code یا Desktop استفاده کنید.
+- The server must be reachable from Anthropic's infrastructure over **public HTTPS** (not localhost or a VPN) ([support article](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)).
+- Authentication with a static token uses "Request headers", but the developer documentation describes it as a beta feature for a limited set of organizations ([remote MCP](https://claude.com/docs/connectors/custom/remote-mcp), [authentication](https://claude.com/docs/connectors/building/authentication)). Without that option it cannot connect, because the bridge has no OAuth.
+- Exposing a bridge that reaches a server terminal to the public is a serious risk; prefer Claude Code or Desktop.
 
-## ChatGPT — پشتیبانی نمی‌شود
+## ChatGPT: not supported
 
-بر پایه‌ی [مستندات OpenAI](https://developers.openai.com/plugins/build/auth)، ChatGPT برای سرور MCP یا OAuth 2.1 می‌خواهد یا بدون احراز هویت، و توکن ثابت نمی‌فرستد. پل OAuth ندارد (و بدون احراز هویت اجرا نمی‌شود). از Codex CLI استفاده کنید، یا مدل‌های OpenAI را از راه `examples/openai_agent.py` وصل کنید.
+According to the [OpenAI documentation](https://developers.openai.com/plugins/build/auth), ChatGPT requires either OAuth 2.1 or no authentication for an MCP server, and does not send a static token. The bridge has no OAuth (and does not run without authentication). Use Codex CLI, or connect OpenAI models through `examples/openai_agent.py`.
 
-## Cursor — آزمایش نشده
+## Cursor: untested
 
-`~/.cursor/mcp.json` یا `.cursor/mcp.json` ([مستندات](https://cursor.com/docs/mcp)):
+`~/.cursor/mcp.json` or `.cursor/mcp.json` ([documentation](https://cursor.com/docs/mcp)):
 
 ```json
 { "mcpServers": { "terminal-bridge": {
@@ -112,9 +112,9 @@ Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
   "headers": { "Authorization": "Bearer ${env:ATB_AGENT_TOKEN}" } } } }
 ```
 
-## VS Code — آزمایش نشده
+## VS Code: untested
 
-`.vscode/mcp.json` ([مستندات](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)):
+`.vscode/mcp.json` ([documentation](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)):
 
 ```json
 {
@@ -125,13 +125,13 @@ Get-CimInstance Win32_Process -Filter "Name='Claude.exe'" |
 }
 ```
 
-## Open WebUI — آزمایش نشده
+## Open WebUI: untested
 
-نسخه‌ی 0.6.31 به بعد: Admin Settings ← External Tools ← افزودن، نوع «MCP (Streamable HTTP)»، احراز هویت Bearer ([مستندات](https://docs.openwebui.com/features/extensibility/mcp)). اگر Open WebUI داخل Docker است، نشانیِ پل از دید آن را (مثلاً `host.docker.internal:*`) به `ATB_EXTRA_HOSTS` بیفزایید و مطمئن شوید پل روی آن نشانی در دسترس است.
+Version 0.6.31 and later: Admin Settings → External Tools → add, type "MCP (Streamable HTTP)", Bearer authentication ([documentation](https://docs.openwebui.com/features/extensibility/mcp)). If Open WebUI runs inside Docker, add the bridge address as it sees it (for example `host.docker.internal:*`) to `ATB_EXTRA_HOSTS`, and make sure the bridge is reachable at that address.
 
-## Hermes Agent — آزمایش نشده
+## Hermes Agent: untested
 
-`~/.hermes/config.yaml` و سپس `/reload-mcp` ([مستندات](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference)):
+`~/.hermes/config.yaml`, then `/reload-mcp` ([documentation](https://hermes-agent.nousresearch.com/docs/reference/mcp-config-reference)):
 
 ```yaml
 mcp_servers:
@@ -141,22 +141,22 @@ mcp_servers:
       Authorization: "Bearer ${ATB_AGENT_TOKEN}"
 ```
 
-## Ollama، vLLM و هر API سازگار با OpenAI
+## Ollama, vLLM and any OpenAI-compatible API
 
 ```bash
 pip install httpx
 export ATB_URL=http://127.0.0.1:8750 ATB_AGENT_TOKEN=TOKEN
 export OPENAI_BASE_URL=http://127.0.0.1:11434/v1 OPENAI_MODEL=qwen2.5-coder
-python examples/openai_agent.py "تست‌های پروژه‌ی /srv/app روی سرور demo را اجرا و خطاها را رفع کن"
+python examples/openai_agent.py "Run the tests of the /srv/app project on the demo server and fix the errors"
 ```
 
-مدل باید tool calling را پشتیبانی کند؛ کیفیت کار به مدل بستگی دارد. برای ساخت عامل خودتان: `GET /api/v1/openai/tools` و `POST /api/v1/openai/tool_calls`.
+The model must support tool calling; the quality of the work depends on the model. To build your own agent, use `GET /api/v1/openai/tools` and `POST /api/v1/openai/tool_calls`.
 
-## خطاهای رایج
+## Common errors
 
-| نشانه | علت |
+| Symptom | Cause |
 |---|---|
-| 401 | توکن اشتباه، چرخش‌یافته یا توکن کاربر به‌جای توکن دستیار |
-| 421 یا «Invalid Host header» روی `/mcp` | نام میزبان در `ATB_ALLOWED_HOSTS` / `ATB_EXTRA_HOSTS` نیست |
-| 403 روی `/mcp` از کلاینت مرورگری | Origin را به `ATB_ALLOWED_ORIGINS` بیفزایید |
-| فهرست سرورها خالی است | به دستیار روی هیچ سروری دسترسی داده نشده |
+| 401 | wrong or rotated token, or a user token instead of an assistant token |
+| 421 or "Invalid Host header" on `/mcp` | the host name is not in `ATB_ALLOWED_HOSTS` / `ATB_EXTRA_HOSTS` |
+| 403 on `/mcp` from a browser client | add the Origin to `ATB_ALLOWED_ORIGINS` |
+| The server list is empty | the assistant has not been granted access to any server |

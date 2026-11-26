@@ -8,4 +8,4 @@ This project gives AI assistants access to servers, so please treat vulnerabilit
 - Include the version, steps to reproduce and the impact. Remove real addresses, keys and tokens.
 
 The project has not had an independent security audit. The threat model and known limitations are in
-[docs/SECURITY.md](../docs/SECURITY.md) (Persian).
+[docs/SECURITY.md](../docs/SECURITY.md).

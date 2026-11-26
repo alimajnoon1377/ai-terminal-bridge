@@ -2,55 +2,55 @@
 
 # API
 
-نشانی پایه: همان نشانی پل (پیش‌فرض `http://127.0.0.1:8750`). احراز هویت: سرآیند `Authorization: Bearer TOKEN`.
+Base URL: the address of the bridge (default `http://127.0.0.1:8750`). Authentication: the `Authorization: Bearer TOKEN` header.
 
-- توکن **دستیار** (`atbag_...`) در داشبورد ساخته می‌شود و فقط ابزارها را می‌بیند.
-- توکن **کاربر** (`atbs_...`) از `/api/auth/login` گرفته می‌شود. کاربر عادی فقط سرورها و دستیارهای خود را می‌بیند؛ مدیر همه را.
-- شمای تعاملی: `/api/docs` (فایل‌های ظاهری آن از CDN بارگیری می‌شوند) و `/api/openapi.json`.
-- حداکثر اندازه‌ی بدنه‌ی درخواست ۸ مگابایت است.
+- An **assistant** token (`atbag_...`) is created in the dashboard and can access only the tools.
+- A **user** token (`atbs_...`) is obtained from `/api/auth/login`. A regular user sees only their own servers and assistants; an administrator sees all of them.
+- Interactive schema: `/api/docs` (its front-end files are loaded from a CDN) and `/api/openapi.json`.
+- The maximum request body size is 8 MB.
 
 ## HTTP
 
-| روش | مسیر | دسترسی | پارامترها / بدنه |
+| Method | Path | Access | Parameters / body |
 |---|---|---|---|
-| POST | `/api/auth/login` | بدون احراز هویت | `username`*, `password`* |
-| POST | `/api/auth/logout` | کاربر |  |
-| GET | `/api/auth/me` | کاربر |  |
-| POST | `/api/auth/password` | کاربر | `current_password`*, `new_password`* |
-| GET | `/api/users` | مدیر |  |
-| POST | `/api/users` | مدیر | `username`*, `password`*, `role` |
-| PATCH | `/api/users/{user_id}` | مدیر | `disabled`, `role`, `password` |
-| GET | `/api/servers` | کاربر |  |
-| POST | `/api/servers` | کاربر | `name`*, `host`*, `port`, `username`*, `auth_type`, `secret` |
-| DELETE | `/api/servers/{server_id}` | کاربر |  |
-| POST | `/api/servers/{server_id}/probe` | کاربر |  |
-| POST | `/api/servers/{server_id}/trust` | کاربر | `fingerprint`* |
-| GET | `/api/servers/{server_id}/history` | کاربر |  |
-| GET | `/api/agents` | کاربر |  |
-| POST | `/api/agents` | کاربر | `name`*, `kind`, `rate_limit_per_minute` |
-| POST | `/api/agents/{agent_id}/rotate` | کاربر |  |
-| PATCH | `/api/agents/{agent_id}` | کاربر | `name`, `paused`, `rate_limit_per_minute` |
-| DELETE | `/api/agents/{agent_id}` | کاربر |  |
-| GET | `/api/agents/{agent_id}/grants` | کاربر |  |
-| PUT | `/api/agents/{agent_id}/grants/{server_id}` | کاربر | `level`, `paths`, `deny_globs`, `services`, `allowed_commands`, `denied_patterns`, `force_sandbox`, `sandbox_network`, `allow_docker`, `use_sudo_for_services`, `auto_approve_destructive`, `max_runtime_seconds`, `max_output_kb`, `max_memory_mb`, `max_concurrent_jobs` |
-| DELETE | `/api/agents/{agent_id}/grants/{server_id}` | کاربر |  |
-| GET | `/api/approvals` | کاربر | `status` |
-| POST | `/api/approvals/{approval_id}/decision` | کاربر | `approve`*, `reason` |
-| GET | `/api/jobs` | کاربر | `limit` |
-| POST | `/api/jobs/{job_id}/terminate` | کاربر |  |
-| GET | `/api/audit` | کاربر | `limit`, `before`, `actor_id`, `server_id` |
-| GET | `/api/audit/verify` | مدیر |  |
-| GET | `/api/settings/kill-switch` | کاربر |  |
-| PUT | `/api/settings/kill-switch` | مدیر | `enabled`* |
-| GET | `/api/v1/tools` | دستیار یا کاربر |  |
-| POST | `/api/v1/tools/{name}` | دستیار یا کاربر | ورودی‌های ابزار (JSON) |
-| GET | `/api/v1/openai/tools` | دستیار یا کاربر |  |
-| POST | `/api/v1/openai/tool_calls` | دستیار یا کاربر | `tool_calls`* |
-| GET | `/api/health` | بدون احراز هویت |  |
+| POST | `/api/auth/login` | no authentication | `username`*, `password`* |
+| POST | `/api/auth/logout` | user |  |
+| GET | `/api/auth/me` | user |  |
+| POST | `/api/auth/password` | user | `current_password`*, `new_password`* |
+| GET | `/api/users` | administrator |  |
+| POST | `/api/users` | administrator | `username`*, `password`*, `role` |
+| PATCH | `/api/users/{user_id}` | administrator | `disabled`, `role`, `password` |
+| GET | `/api/servers` | user |  |
+| POST | `/api/servers` | user | `name`*, `host`*, `port`, `username`*, `auth_type`, `secret` |
+| DELETE | `/api/servers/{server_id}` | user |  |
+| POST | `/api/servers/{server_id}/probe` | user |  |
+| POST | `/api/servers/{server_id}/trust` | user | `fingerprint`* |
+| GET | `/api/servers/{server_id}/history` | user |  |
+| GET | `/api/agents` | user |  |
+| POST | `/api/agents` | user | `name`*, `kind`, `rate_limit_per_minute` |
+| POST | `/api/agents/{agent_id}/rotate` | user |  |
+| PATCH | `/api/agents/{agent_id}` | user | `name`, `paused`, `rate_limit_per_minute` |
+| DELETE | `/api/agents/{agent_id}` | user |  |
+| GET | `/api/agents/{agent_id}/grants` | user |  |
+| PUT | `/api/agents/{agent_id}/grants/{server_id}` | user | `level`, `paths`, `deny_globs`, `services`, `allowed_commands`, `denied_patterns`, `force_sandbox`, `sandbox_network`, `allow_docker`, `use_sudo_for_services`, `auto_approve_destructive`, `max_runtime_seconds`, `max_output_kb`, `max_memory_mb`, `max_concurrent_jobs` |
+| DELETE | `/api/agents/{agent_id}/grants/{server_id}` | user |  |
+| GET | `/api/approvals` | user | `status` |
+| POST | `/api/approvals/{approval_id}/decision` | user | `approve`*, `reason` |
+| GET | `/api/jobs` | user | `limit` |
+| POST | `/api/jobs/{job_id}/terminate` | user |  |
+| GET | `/api/audit` | user | `limit`, `before`, `actor_id`, `server_id` |
+| GET | `/api/audit/verify` | administrator |  |
+| GET | `/api/settings/kill-switch` | user |  |
+| PUT | `/api/settings/kill-switch` | administrator | `enabled`* |
+| GET | `/api/v1/tools` | assistant or user |  |
+| POST | `/api/v1/tools/{name}` | assistant or user | tool input (JSON) |
+| GET | `/api/v1/openai/tools` | assistant or user |  |
+| POST | `/api/v1/openai/tool_calls` | assistant or user | `tool_calls`* |
+| GET | `/api/health` | no authentication |  |
 
-`*` یعنی فیلد الزامی. ساختار دسترسی (`PUT .../grants/{server_id}`):
+`*` marks a required field. Structure of a grant (`PUT .../grants/{server_id}`):
 
-| ورودی | نوع | الزامی | پیش‌فرض | توضیح |
+| Input | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `level` | Level |  | `'read_only'` |  |
 | `paths` | array<PathRule> |  |  |  |
@@ -68,27 +68,27 @@
 | `max_memory_mb` | integer |  | `0` |  |
 | `max_concurrent_jobs` | integer |  | `4` |  |
 
-هر قاعده‌ی مسیر: `{"path": "/مسیر/مطلق", "mode": "rw" | "ro"}`؛ دقیق‌ترین قاعده برنده است.
+Each path rule: `{"path": "/absolute/path", "mode": "rw" | "ro"}`; the most specific rule wins.
 
 ## MCP
 
-- **Streamable HTTP:** `POST /mcp` با توکن دستیار؛ بدون نشست (stateless). سرآیند Host باید در `ATB_ALLOWED_HOSTS` باشد.
-- **stdio:** `atb mcp-stdio` با متغیرهای `ATB_URL` و `ATB_AGENT_TOKEN`؛ واسطه‌ای است که فراخوانی‌ها را به پلِ در حال اجرا می‌فرستد.
-- راهنمای کلاینت‌ها: [CLIENTS.md](CLIENTS.md).
+- **Streamable HTTP:** `POST /mcp` with an assistant token; stateless (no session). The Host header must be listed in `ATB_ALLOWED_HOSTS`.
+- **stdio:** `atb mcp-stdio` with the `ATB_URL` and `ATB_AGENT_TOKEN` variables; a proxy that forwards calls to the running bridge.
+- Client guide: [CLIENTS.md](CLIENTS.md).
 
 ## WebSocket
 
-توکن در **نخستین پیام** فرستاده می‌شود، نه در نشانی. کدهای بستن: `4401` توکن نامعتبر، `4404` سرور ناموجود، `4400` ورودی نامعتبر.
+The token is sent in the **first message**, not in the URL. Close codes: `4401` invalid token, `4404` unknown server, `4400` invalid input.
 
-| مسیر | دسترسی | پیام‌ها |
+| Path | Access | Messages |
 |---|---|---|
-| `/api/ws/events` | کاربر | ارسال `{"token"}`؛ دریافت `ready` و سپس رویدادهای زنده (فعالیت، خروجی دستور، تأیید، توقف اضطراری) |
-| `/api/ws/tools` | دستیار یا کاربر | ارسال `{"token"}`، سپس `{"id", "tool", "arguments"}`؛ دریافت `{"id", "ok", "result" \| "error"}`؛ حداکثر ۸ فراخوانی هم‌زمان |
-| `/api/ws/terminal/{server_id}` | کاربر | ارسال `{"token", "cols", "rows", "session"}`، سپس `{"type": "input", "data"}` یا `{"type": "resize", "cols", "rows"}`؛ خروجی به‌صورت باینری |
+| `/api/ws/events` | user | send `{"token"}`; receive `ready`, then live events (activity, command output, approvals, emergency stop) |
+| `/api/ws/tools` | assistant or user | send `{"token"}`, then `{"id", "tool", "arguments"}`; receive `{"id", "ok", "result" \| "error"}`; at most 8 concurrent calls |
+| `/api/ws/terminal/{server_id}` | user | send `{"token", "cols", "rows", "session"}`, then `{"type": "input", "data"}` or `{"type": "resize", "cols", "rows"}`; output is binary |
 
-## کدهای خطا
+## Error codes
 
-| کد | HTTP |
+| Code | HTTP |
 |---|---|
 | `error` | 400 |
 | `invalid_input` | 422 |

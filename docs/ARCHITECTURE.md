@@ -1,83 +1,83 @@
-# معماری
+# Architecture
 
-## نمای کلی
+## Overview
 
 ```
-Claude Code / Gemini CLI / Codex / کلاینت‌های MCP ──┐  MCP (HTTP یا stdio)
-مدل‌های سازگار با OpenAI (محلی یا ابری) ────────────┤  REST: /api/v1/openai/*
-اسکریپت‌ها و CLI ──────────────────────────────────┤  REST / WebSocket
-داشبورد وب (انسان) ────────────────────────────────┘  REST / WebSocket
+Claude Code / Gemini CLI / Codex / MCP clients ──┐  MCP (HTTP or stdio)
+OpenAI-compatible models (local or cloud) ───────┤  REST: /api/v1/openai/*
+Scripts and CLI ─────────────────────────────────┤  REST / WebSocket
+Web dashboard (human) ───────────────────────────┘  REST / WebSocket
                          │
-                 ┌───────▼─────────────────────────────┐
-                 │ پل (FastAPI، یک فرایند async)        │
-                 │  احراز هویت ► Gateway ► Policy       │
-                 │                 │      └► تأیید انسان │
-                 │                 ▼                     │
-                 │   ابزارها ► SSH pool / SFTP / jobs    │
-                 │   Audit · رمزنگاری · پوشاندن اسرار    │
-                 │   SQLite یا PostgreSQL                │
-                 └───────┬─────────────────────────────┘
-                         │ SSH (کلید میزبان سنجاق‌شده)
-                 سرورهای لینوکسی  (bubblewrap، tmux، ~/.atb)
+                 ┌───────▼──────────────────────────────────┐
+                 │ Bridge (FastAPI, one async process)      │
+                 │  Authentication ► Gateway ► Policy       │
+                 │                     │        └► Approval │
+                 │                     ▼                    │
+                 │   Tools ► SSH pool / SFTP / jobs         │
+                 │   Audit · encryption · secret masking    │
+                 │   SQLite or PostgreSQL                   │
+                 └───────┬──────────────────────────────────┘
+                         │ SSH (pinned host key)
+                 Linux servers  (bubblewrap, tmux, ~/.atb)
 ```
 
-روی سرور مقصد **هیچ عاملی نصب نمی‌شود**؛ فقط SSH/SFTP و برنامه‌های معمول لینوکس.
+**No agent is installed** on the target server; only SSH/SFTP and ordinary Linux programs.
 
-## یک نقطه‌ی اعمال سیاست
+## A single policy enforcement point
 
-همه‌ی رابط‌ها به `Gateway.call(actor, tool, arguments)` می‌رسند:
+Every interface ends up in `Gateway.call(actor, tool, arguments)`:
 
-1. توقف اضطراری، توقف دستیار و محدودیت نرخ (برای دستیارها)
-2. اعتبارسنجی ورودی با Pydantic (فیلد ناشناخته رد می‌شود)
-3. پیدا کردن سرور و دسترسیِ همان دستیار روی آن
-4. تابع ابزار فقط یک `Operation` می‌سازد (نوع، پیش‌نمایش، وضعیت) و **هنوز کاری تغییر نمی‌دهد**
-5. `decide` یکی از سه نتیجه را می‌دهد: آزاد، تأیید، رد
-6. اجرا، پوشاندن اسرار در خروجی، ثبت Audit، انتشار رویداد زنده
+1. Emergency stop, assistant suspension and rate limit (for assistants)
+2. Input validation with Pydantic (unknown fields are rejected)
+3. Finding the server and that assistant's grant on it
+4. The tool function only builds an `Operation` (kind, preview, state) and **changes nothing yet**
+5. `decide` returns one of three results: allow, require approval, deny
+6. Execution, secret masking in the output, audit record, live event
 
-تأیید به اثر انگشتی از دستیار، سرور، ابزار، ورودی‌ها، وضعیت فایل و دسترسی بسته است، یک بار مصرف می‌شود و پیش از اجرا همه‌چیز دوباره بررسی می‌شود.
+An approval is bound to a fingerprint of the assistant, server, tool, arguments, file state and grant. It is used once, and everything is checked again before execution.
 
-## اجزا
+## Components
 
-| مسیر | مسئولیت |
+| Path | Responsibility |
 |---|---|
-| `backend/atb/gateway.py` | نقطه‌ی اعمال سیاست و تأییدها |
-| `backend/atb/policy.py` | سطح‌ها، قواعد مسیر و دستور (تابع‌های خالص) |
-| `backend/atb/tools/` | ابزارها؛ افزونه‌ها از گروه entry point به نام `atb.tools` |
-| `backend/atb/ssh/` | اتصال‌ها، SFTP، دستورهای ماندگار |
-| `backend/atb/api/` | REST مدیریت، REST ابزارها، WebSocket |
-| `backend/atb/mcp_server.py` | MCP روی HTTP و واسط stdio |
-| `backend/atb/{audit,crypto,redact,db,events}.py` | زیرساخت |
-| `frontend/` | داشبورد React + TypeScript (xterm.js، Monaco)، راست‌به‌چپ، تم روشن/تیره، بدون درخواست به بیرون |
+| `backend/atb/gateway.py` | policy enforcement point and approvals |
+| `backend/atb/policy.py` | levels, path and command rules (pure functions) |
+| `backend/atb/tools/` | tools; plugins come from the `atb.tools` entry point group |
+| `backend/atb/ssh/` | connections, SFTP, persistent commands |
+| `backend/atb/api/` | management REST, tool REST, WebSocket |
+| `backend/atb/mcp_server.py` | MCP over HTTP and the stdio proxy |
+| `backend/atb/{audit,crypto,redact,db,events}.py` | infrastructure |
+| `frontend/` | React + TypeScript dashboard (xterm.js, Monaco), right-to-left, light/dark themes, no external requests |
 
-## دستورهای ماندگار و اتصال مجدد
+## Persistent commands and reconnection
 
-هر دستور به‌صورت اسکریپتی در `~/.atb/jobs/<id>/` نوشته و با `setsid nohup` اجرا می‌شود و خروجی و کد خروج را در همان پوشه می‌نویسد. در نتیجه:
+Each command is written as a script in `~/.atb/jobs/<id>/`, run with `setsid nohup`, and writes its output and exit code to the same folder. As a result:
 
-- قطع SSH، قطع دستیار یا **راه‌اندازی مجدد پل** دستور را متوقف نمی‌کند؛ پل پس از بالا آمدن دوباره آن را دنبال می‌کند.
-- خروجی با offset خوانده می‌شود.
-- مهلت اجرا با `timeout` و سقف خروجی با `head -c` روی خود سرور اعمال می‌شود.
+- Losing SSH, losing the assistant or **restarting the bridge** does not stop the command; the bridge follows it again after it comes back up.
+- Output is read by offset.
+- The time limit is enforced with `timeout` and the output cap with `head -c`, on the server itself.
 
-پوشه‌های job و snapshotها در `~/.atb` خودکار پاک نمی‌شوند.
+Job folders and snapshots in `~/.atb` are not cleaned up automatically.
 
-ترمینال تعاملی فقط برای انسان است؛ اگر `tmux` روی سرور باشد، نشست پس از قطع باقی می‌ماند. دستیارها PTY تعاملی ندارند (برنامه‌ای که ورودی تعاملی بخواهد کار نمی‌کند؛ ورودی استاندارد دستورها `/dev/null` است).
+The interactive terminal is for humans only; if `tmux` is on the server, the session survives a disconnect. Assistants have no interactive PTY (programs that need interactive input do not work; the standard input of commands is `/dev/null`).
 
-## تصمیم‌های فنی
+## Technical decisions
 
-| انتخاب | دلیل | هزینه |
+| Choice | Reason | Cost |
 |---|---|---|
-| Python + FastAPI + AsyncSSH | پیشنهاد مشخصات؛ SSH/SFTP ناهمگام و یک فرایند کم‌مصرف | یک نمونه‌ی پل؛ مقیاس افقی پشتیبانی نمی‌شود |
-| SQLite پیش‌فرض، PostgreSQL اختیاری | نصب ساده روی VPS کوچک | مهاجرت خودکار schema وجود ندارد |
-| MCP stateless با پاسخ JSON | سازگاری با پروکسی‌ها و سادگی | اعلان‌های سمت سرور MCP ندارد |
-| وضعیت در حافظه (rate limit، قفل ورود، رویدادها) | سادگی | با راه‌اندازی مجدد صفر می‌شود؛ فقط یک worker |
-| bubblewrap به‌جای کانتینر برای هر دستور | سبک، بدون root و daemon | به user namespace فعال نیاز دارد |
-| دستور ماندگار با فایل روی مقصد | بدون نصب agent | وضعیت با polling به‌دست می‌آید |
+| Python + FastAPI + AsyncSSH | suggested by the original specification; async SSH/SFTP and one lightweight process | a single bridge instance; no horizontal scaling |
+| SQLite by default, PostgreSQL optional | simple installation on a small VPS | no automatic schema migration |
+| Stateless MCP with JSON responses | proxy compatibility and simplicity | no server-initiated MCP notifications |
+| In-memory state (rate limit, sign-in lockout, events) | simplicity | reset on restart; one worker only |
+| bubblewrap instead of a container per command | lightweight, no root or daemon | needs user namespaces enabled |
+| Persistent commands using files on the target | no agent to install | status is obtained by polling |
 
-## گسترش با افزونه
+## Extending with plugins
 
-نمونه‌ی کامل در [examples/plugin](../examples/plugin/atb_plugin_example/__init__.py):
+A complete example is in [examples/plugin](../examples/plugin/atb_plugin_example/__init__.py):
 
 ```bash
-pip install ./examples/plugin    # در همان محیط پل، سپس راه‌اندازی مجدد
+pip install ./examples/plugin    # in the bridge's environment, then restart
 ```
 
-دو قاعده: هر مسیر را با `ctx.resolve` بررسی کنید و پیش از `Operation.run` هیچ اثر جانبی نداشته باشید. افزونه با اعتماد کامل اجرا می‌شود.
+Two rules: check every path with `ctx.resolve`, and cause no side effects before `Operation.run`. A plugin runs with full trust.
