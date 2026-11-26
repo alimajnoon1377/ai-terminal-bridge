@@ -1,0 +1,77 @@
+name: ai-terminal-bridge
+
+services:
+  bridge:
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-slim}
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.13-slim}
+    restart: unless-stopped
+    ports:
+      # Local only by default. Publish through the HTTPS profile (or your own proxy) for remote access.
+      - "${ATB_BIND:-127.0.0.1}:${ATB_PUBLISH_PORT:-8750}:8750"
+    environment:
+      ATB_ADMIN_USERNAME: ${ATB_ADMIN_USERNAME:-admin}
+      ATB_ADMIN_PASSWORD: ${ATB_ADMIN_PASSWORD:-}
+      ATB_MASTER_KEY: ${ATB_MASTER_KEY:-}
+      ATB_DATABASE_URL: ${ATB_DATABASE_URL:-}
+      ATB_ALLOWED_HOSTS: "127.0.0.1:*,localhost:*,[::1]:*,${ATB_DOMAIN:-localhost},${ATB_DOMAIN:-localhost}:*${ATB_EXTRA_HOSTS:+,}${ATB_EXTRA_HOSTS:-}"
+      ATB_ALLOWED_ORIGINS: ${ATB_ALLOWED_ORIGINS:-}
+      # Trust X-Forwarded-For only from the proxy on the private compose network.
+      FORWARDED_ALLOW_IPS: ${ATB_SUBNET:-172.31.250.0/24}
+    volumes:
+      - atb-data:/data
+    extra_hosts:
+      # Lets you add the Docker host itself as an SSH server named host.docker.internal.
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    profiles: [https]
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ATB_DOMAIN: ${ATB_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bridge
+
+  postgres:
+    profiles: [postgres]
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atb
+      POSTGRES_DB: atb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "atb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${ATB_SUBNET:-172.31.250.0/24}
+
+volumes:
+  atb-data:
+  caddy-data:
+  caddy-config:
+  postgres-data:

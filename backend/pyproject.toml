@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-terminal-bridge"
+version = "0.1.0"
+description = "Policy-enforcing bridge between AI assistants and SSH servers (MCP, REST, WebSocket)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+  "aiosqlite>=0.20",
+  "argon2-cffi>=23.1",
+  "asyncssh>=2.18",
+  "cryptography>=43",
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  "mcp>=2.3,<3",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.5",
+  "sqlalchemy[asyncio]>=2.0.35",
+  "typer>=0.12",
+  "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+postgres = ["asyncpg>=0.29"]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "websockets>=13", "ruff>=0.6"]
+
+[project.scripts]
+atb = "atb.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["atb*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008"]

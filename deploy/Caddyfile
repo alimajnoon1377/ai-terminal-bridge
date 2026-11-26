@@ -1,0 +1,7 @@
+# Automatic HTTPS for a public domain. With ATB_DOMAIN=localhost Caddy uses its own local CA.
+{$ATB_DOMAIN} {
+	request_body {
+		max_size 8MB
+	}
+	reverse_proxy bridge:8750
+}

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atb-plugin-example"
+version = "0.1.0"
+description = "Example tool plugin for AI Terminal Bridge"
+requires-python = ">=3.11"
+dependencies = ["ai-terminal-bridge"]
+
+# The bridge imports every module advertised in this group when it starts.
+[project.entry-points."atb.tools"]
+disk_usage = "atb_plugin_example"
+
+[tool.setuptools]
+packages = ["atb_plugin_example"]

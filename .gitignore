@@ -1,0 +1,31 @@
+# build output and caches
+node_modules/
+dist/
+data/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# secrets and personal files: never publish
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite*
+*.key
+*.pem
+id_rsa*
+id_ed25519*
+*.backup-*
+
+# local helpers, archives and editor settings
+*.zip
+setup-claude-desktop.js
+.idea/
+.vscode/
+
+# staging folder for the two files that become .github/
+github-setup/
